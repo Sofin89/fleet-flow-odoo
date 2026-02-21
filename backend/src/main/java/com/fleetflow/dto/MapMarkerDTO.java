@@ -2,6 +2,7 @@ package com.fleetflow.dto;
 
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class MapMarkerDTO {
@@ -36,4 +37,20 @@ public class MapMarkerDTO {
     private Double speed;
     private Double heading;
     private LocalDateTime lastUpdated;
+
+    // Trip route info (only for COMBINED markers)
+    private String tripOrigin;
+    private String tripDestination;
+    private Double originLat;
+    private Double originLng;
+    private Double destLat;
+    private Double destLng;
+    private Double totalDistanceKm;
+    private Double remainingDistanceKm;
+    private Double progressPercent;
+    private Integer estimatedMinutesRemaining;
+    
+    // OSRM route data (only for COMBINED markers)
+    private List<double[]> routePolyline; // [[lat, lng], ...] for road-following route
+    private Boolean isRouteFallback; // true if using straight-line fallback
 }

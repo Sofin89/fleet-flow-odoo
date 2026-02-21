@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { tripAPI, vehicleAPI, driverAPI } from '../api';
-import { Plus, X, Play, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, X, Play, CheckCircle, XCircle, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 const statusOptions = ['DRAFT', 'DISPATCHED', 'COMPLETED', 'CANCELLED'];
 
@@ -12,12 +13,14 @@ export default function Trips() {
     const [totalPages, setTotalPages] = useState(0);
     const [showModal, setShowModal] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
+    const [showMapPicker, setShowMapPicker] = useState(false);
     const [completingTrip, setCompletingTrip] = useState(null);
+    const [editingTrip, setEditingTrip] = useState(null);
     const [filterStatus, setFilterStatus] = useState('');
     const [vehicles, setVehicles] = useState([]);
     const [drivers, setDrivers] = useState([]);
     const [form, setForm] = useState({
-        vehicleId: '', driverId: '', origin: '', destination: '', cargoWeightKg: '', revenue: ''
+        vehicleId: '', driverId: '', origin: '', destination: '', originName: '', destinationName: '', cargoWeightKg: '', revenue: ''
     });
     const [completeForm, setCompleteForm] = useState({ endOdometer: '', revenue: '' });
 
@@ -55,13 +58,37 @@ export default function Trips() {
                 driverId: parseInt(form.driverId),
                 cargoWeightKg: parseFloat(form.cargoWeightKg),
                 revenue: form.revenue ? parseFloat(form.revenue) : null,
+                originName: form.originName || null,
+                destinationName: form.destinationName || null,
             });
             toast.success('Trip created');
             setShowModal(false);
-            setForm({ vehicleId: '', driverId: '', origin: '', destination: '', cargoWeightKg: '', revenue: '' });
+            setForm({ vehicleId: '', driverId: '', origin: '', destination: '', originName: '', destinationName: '', cargoWeightKg: '', revenue: '' });
             loadTrips();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to create trip');
+        }
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            await tripAPI.update(editingTrip.id, {
+                ...form,
+                vehicleId: parseInt(form.vehicleId),
+                driverId: parseInt(form.driverId),
+                cargoWeightKg: parseFloat(form.cargoWeightKg),
+                revenue: form.revenue ? parseFloat(form.revenue) : null,
+                originName: form.originName || null,
+                destinationName: form.destinationName || null,
+            });
+            toast.success('Trip updated');
+            setShowModal(false);
+            setEditingTrip(null);
+            setForm({ vehicleId: '', driverId: '', origin: '', destination: '', originName: '', destinationName: '', cargoWeightKg: '', revenue: '' });
+            loadTrips();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update trip');
         }
     };
 
@@ -104,6 +131,24 @@ export default function Trips() {
 
     const openCreate = async () => {
         await loadFormData();
+        setEditingTrip(null);
+        setForm({ vehicleId: '', driverId: '', origin: '', destination: '', originName: '', destinationName: '', cargoWeightKg: '', revenue: '' });
+        setShowModal(true);
+    };
+
+    const openEdit = async (trip) => {
+        await loadFormData();
+        setEditingTrip(trip);
+        setForm({
+            vehicleId: trip.vehicleId.toString(),
+            driverId: trip.driverId.toString(),
+            origin: trip.origin,
+            destination: trip.destination,
+            originName: trip.originName || '',
+            destinationName: trip.destinationName || '',
+            cargoWeightKg: trip.cargoWeightKg.toString(),
+            revenue: trip.revenue ? trip.revenue.toString() : '',
+        });
         setShowModal(true);
     };
 
@@ -111,6 +156,17 @@ export default function Trips() {
         setCompletingTrip(trip);
         setCompleteForm({ endOdometer: '', revenue: trip.revenue || '' });
         setShowCompleteModal(true);
+    };
+
+    const handleMapSelection = (locations) => {
+        setForm({
+            ...form,
+            origin: locations.origin,
+            destination: locations.destination,
+            originName: locations.originName,
+            destinationName: locations.destinationName,
+        });
+        setShowMapPicker(false);
     };
 
     if (loading && trips.length === 0) return <div className="loading-spinner"><div className="spinner" /></div>;
@@ -154,6 +210,7 @@ export default function Trips() {
                                     <div className="action-buttons">
                                         {t.status === 'DRAFT' && (
                                             <>
+                                                <button className="btn btn-primary btn-sm" onClick={() => openEdit(t)} title="Edit"><Edit size={14} /></button>
                                                 <button className="btn btn-success btn-sm" onClick={() => handleDispatch(t.id)} title="Dispatch"><Play size={14} /></button>
                                                 <button className="btn btn-danger btn-sm" onClick={() => handleCancel(t.id)} title="Cancel"><XCircle size={14} /></button>
                                             </>
@@ -179,15 +236,15 @@ export default function Trips() {
                 )}
             </div>
 
-            {/* Create Trip Modal */}
+            {/* Create/Edit Trip Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Create Trip</h3>
+                            <h3>{editingTrip ? 'Edit Trip' : 'Create Trip'}</h3>
                             <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
                         </div>
-                        <form onSubmit={handleCreate}>
+                        <form onSubmit={editingTrip ? handleUpdate : handleCreate}>
                             <div className="modal-body">
                                 <div className="form-row">
                                     <div className="form-group">
@@ -213,11 +270,30 @@ export default function Trips() {
                                     <div className="form-group">
                                         <label>Origin *</label>
                                         <input className="form-input" value={form.origin} onChange={e => setForm({ ...form, origin: e.target.value })} required placeholder="Warehouse A" />
+                                        {form.originName && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                                📍 {form.originName}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="form-group">
                                         <label>Destination *</label>
                                         <input className="form-input" value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} required placeholder="Depot B" />
+                                        {form.destinationName && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                                🏁 {form.destinationName}
+                                            </div>
+                                        )}
                                     </div>
+                                </div>
+                                <div style={{ marginBottom: 16 }}>
+                                    <button 
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowMapPicker(true)}
+                                        style={{ width: '100%' }}>
+                                        🗺️ Select on Map
+                                    </button>
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group">
@@ -232,7 +308,7 @@ export default function Trips() {
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary">Create Trip</button>
+                                <button type="submit" className="btn btn-primary">{editingTrip ? 'Update Trip' : 'Create Trip'}</button>
                             </div>
                         </form>
                     </div>
@@ -267,6 +343,14 @@ export default function Trips() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Map Location Picker Modal */}
+            {showMapPicker && (
+                <MapLocationPicker 
+                    onConfirm={handleMapSelection}
+                    onCancel={() => setShowMapPicker(false)}
+                />
             )}
         </div>
     );

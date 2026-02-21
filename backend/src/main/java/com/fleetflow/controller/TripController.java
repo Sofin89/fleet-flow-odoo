@@ -42,6 +42,13 @@ public class TripController {
         return ResponseEntity.ok(ApiResponse.success("Trip created", tripService.createTrip(request)));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<TripResponse>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody TripRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Trip updated", tripService.updateTrip(id, request)));
+    }
+
     @PatchMapping("/{id}/dispatch")
     public ResponseEntity<ApiResponse<TripResponse>> dispatch(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Trip dispatched", tripService.dispatchTrip(id)));

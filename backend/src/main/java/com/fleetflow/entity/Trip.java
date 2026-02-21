@@ -29,6 +29,12 @@ public class Trip {
     @Column(nullable = false)
     private String destination;
 
+    @Column
+    private String originName;
+
+    @Column
+    private String destinationName;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal cargoWeightKg;
 

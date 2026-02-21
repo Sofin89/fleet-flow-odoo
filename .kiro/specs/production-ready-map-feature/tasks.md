@@ -1,0 +1,190 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Trip Update, Route Display, and Location Selection Deficiencies
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bugs exist
+  - **Scoped PBT Approach**: For deterministic bugs, scope the property to the concrete failing case(s) to ensure reproducibility
+  - Test implementation details from Fault Condition in design:
+    - **Trip Update**: Attempt to update a DRAFT trip's origin, destination, cargo weight, and revenue - expect no update functionality available (HTTP 405 or 404)
+    - **Route Display**: Fetch map markers for a dispatched trip - expect route polyline to be straight line (2 points only) or missing OSRM data
+    - **Location Selection**: Verify trip creation UI only accepts text-based coordinate input - no map picker component exists
+  - The test assertions should match the Expected Behavior Properties from design:
+    - Trip update should return success for DRAFT trips (requirement 2.1)
+    - Route polyline should contain >2 points following road network (requirement 2.10)
+    - Map picker component should be available in trip creation flow (requirement 2.5)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bugs exist)
+  - Document counterexamples found to understand root cause
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Existing Trip Management and Map Display Behavior
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - **Trip Creation**: Create trip with valid data - verify vehicle availability, driver duty status, license validity, and cargo capacity validation still works (requirement 3.1)
+    - **Trip Dispatch**: Dispatch a trip - verify vehicle status updates to ON_TRIP and dispatch logic executes (requirement 3.2)
+    - **Trip Completion**: Complete a trip - verify odometer updates, revenue calculation, and status resets (requirement 3.3)
+    - **Trip Cancellation**: Cancel a trip - verify vehicle and driver status reset appropriately (requirement 3.4)
+    - **Text-Based Coordinates**: Create trip with text coordinate input - verify legacy format still accepted (requirement 3.11)
+    - **Map Markers**: Display driver-only, vehicle-only, and combined markers - verify correct icons and status display (requirements 3.13, 3.14, 3.15)
+    - **Map Filters**: Apply filters to map markers - verify filtering works without affecting route display (requirement 3.16)
+    - **Route Visibility Toggle**: Toggle route visibility - verify show/hide works without affecting markers (requirement 3.17)
+    - **Marker Popups**: Click map markers - verify detailed popup information displays (requirement 3.18)
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.11, 3.13, 3.14, 3.15, 3.16, 3.17, 3.18_
+
+- [x] 3. Implement production-ready map feature fixes
+
+  - [x] 3.1 Add trip update functionality (Backend)
+    - Add `originName` and `destinationName` fields to `Trip` entity (nullable String columns)
+    - Update `TripRequest` DTO to include `originName` and `destinationName` fields
+    - Update `TripResponse` DTO to include `originName` and `destinationName` fields
+    - Add `updateTrip(Long id, TripRequest request)` method to `TripService`:
+      - Load trip by ID
+      - Validate trip status is DRAFT (throw BusinessException if not)
+      - Load and validate vehicle and driver
+      - Re-run all business validations (vehicle availability, driver duty status, cargo capacity, license compatibility)
+      - Update trip fields (vehicle, driver, origin, destination, originName, destinationName, cargoWeightKg, revenue, startOdometer)
+      - Save and return updated trip
+    - Add `PUT /api/trips/{id}` endpoint to `TripController` that calls `updateTrip`
+    - _Bug_Condition: isBugCondition(trip) where trip.status = DRAFT AND user attempts update_
+    - _Expected_Behavior: updateTrip succeeds for DRAFT trips, rejects for non-DRAFT trips (requirements 2.1, 2.2)_
+    - _Preservation: Existing trip creation, dispatch, completion, and cancellation logic unchanged (requirements 3.1, 3.2, 3.3, 3.4)_
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4_
+
+  - [x] 3.2 Implement OSRM route service with retry logic (Backend)
+    - Create `OSRMRouteService` class with:
+      - `RouteData` inner class containing polyline (List<double[]>), distanceKm (double), isFallback (boolean)
+      - In-memory route cache (ConcurrentHashMap<String, RouteData>) keyed by "originLat,originLng-destLat,destLng"
+      - `getRoute(originLat, originLng, destLat, destLng)` method that checks cache first
+      - `fetchWithRetry()` method implementing retry logic:
+        - MAX_RETRIES = 3
+        - BASE_DELAY_MS = 500 (exponential backoff)
+        - TIMEOUT_MS = 8000
+        - Call OSRM API: `https://router.project-osrm.org/route/v1/driving/{lng},{lat};{lng},{lat}?overview=full&geometries=polyline`
+        - On success: decode polyline, extract distance, return RouteData with isFallback=false
+        - On failure: retry with exponential backoff
+        - After MAX_RETRIES: fall back to straight-line route with isFallback=true
+      - `createFallbackRoute()` method that creates 2-point straight line using haversine distance
+      - `decodePolyline(String encoded)` method for polyline decoding
+      - `haversine()` method for distance calculation
+    - Add `routePolyline` (List<double[]>) and `isRouteFallback` (Boolean) fields to `MapMarkerDTO`
+    - Update `MapTrackingService.getAllMapMarkers()`:
+      - For COMBINED markers, call `osrmRouteService.getRoute()` to fetch route data
+      - Calculate progress using actual route distance instead of straight-line distance
+      - Calculate remaining distance along route polyline
+      - Add routePolyline and isRouteFallback to marker DTO
+    - _Bug_Condition: isBugCondition(route) where route is straight line (2 points) OR OSRM fetch fails_
+    - _Expected_Behavior: Routes follow road network with retry logic and fallback indicators (requirements 2.10, 2.11, 2.12, 2.13, 2.14)_
+    - _Preservation: Existing map marker display for drivers, vehicles, and combined markers unchanged (requirements 3.13, 3.14, 3.15)_
+    - _Requirements: 1.7, 1.8, 1.9, 1.10, 2.10, 2.11, 2.12, 2.13, 2.14_
+
+  - [x] 3.3 Add trip update UI (Frontend)
+    - Add `update: (id, data) => api.put(\`/trips/${id}\`, data)` method to `tripAPI` in `api/index.js`
+    - Update `Trips.jsx`:
+      - Add `editingTrip` state to track which trip is being edited
+      - Add `handleUpdate` function that calls `tripAPI.update()` and handles success/error
+      - Add `openEdit(trip)` function that populates form with trip data and sets `editingTrip`
+      - Add Edit button in actions column for DRAFT trips only (using `<Edit size={14} />` icon)
+      - Update modal submit handler to call `handleUpdate` when editing, `handleCreate` when creating
+      - Update modal title to show "Edit Trip" vs "Create Trip" based on `editingTrip`
+    - _Bug_Condition: isBugCondition(trip) where trip.status = DRAFT AND no update UI exists_
+    - _Expected_Behavior: Edit button available for DRAFT trips, update succeeds (requirement 2.1)_
+    - _Preservation: Trip creation with text-based coordinates still works (requirement 3.11)_
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3_
+
+  - [x] 3.4 Update route display with fallback indicators (Frontend)
+    - Update `LiveMap.jsx`:
+      - Remove frontend OSRM fetching logic (now handled by backend)
+      - Update `routeLines` useMemo to use `m.routePolyline` from backend instead of fetching
+      - Update Polyline rendering to show fallback indicators:
+        - For completed route: opacity 0.5 if isFallback, dashArray '5, 10' if isFallback
+        - For remaining route: opacity 0.4 if isFallback
+      - Add warning Marker at origin position when `isFallback` is true:
+        - Use warning icon (⚠️)
+        - Popup text: "⚠️ Approximate route (straight-line)\nRoad routing unavailable"
+        - Style: fontSize '0.75rem', color '#e67e22'
+      - Use `m.totalDistanceKm` and `m.remainingDistanceKm` from backend for progress calculations
+    - _Bug_Condition: isBugCondition(route) where route is straight line without fallback indicator_
+    - _Expected_Behavior: Routes display with road-following polylines and visual fallback indicators (requirements 2.10, 2.12)_
+    - _Preservation: Route visibility toggle and marker popups still work (requirements 3.17, 3.18)_
+    - _Requirements: 1.7, 1.8, 1.9, 2.10, 2.11, 2.12, 2.13_
+
+  - [x] 3.5 Create map location picker component (Frontend)
+    - Create `frontend/src/components/MapLocationPicker.jsx`:
+      - Component props: `onConfirm`, `onCancel`
+      - State: `origin`, `destination`, `originName`, `destName`, `selectingOrigin`
+      - Render full-screen modal with:
+        - Header: "Select Trip Locations" with close button
+        - Toggle buttons: "📍 Select Origin" and "🏁 Select Destination" (highlight active selection)
+        - Input fields: "Origin Name (optional)" and "Destination Name (optional)"
+        - MapContainer (Leaflet) with click handler:
+          - Click places marker at clicked position
+          - If `selectingOrigin` is true, set origin and switch to destination mode
+          - If `selectingOrigin` is false, set destination
+        - Display origin marker (📍 green pin) and destination marker (🏁 red pin)
+        - Display preview polyline (dashed blue line) between origin and destination
+        - Footer: Cancel button and Confirm button (disabled until both locations selected)
+      - `handleConfirm`: Call `onConfirm` with `{ origin: "lat,lng", destination: "lat,lng", originName, destinationName }`
+      - Custom icons: `originIcon` (📍) and `destIcon` (🏁) using `L.divIcon`
+      - `MapClickHandler` component using `useMapEvents` to handle map clicks
+    - _Bug_Condition: isBugCondition(tripCreation) where only text input available_
+    - _Expected_Behavior: Map picker allows visual location selection with custom naming (requirements 2.5, 2.6, 2.7, 2.8, 2.9)_
+    - _Preservation: N/A (new feature, no existing behavior to preserve)_
+    - _Requirements: 1.4, 1.5, 1.6, 2.5, 2.6, 2.7, 2.8, 2.9_
+
+  - [x] 3.6 Integrate map picker into trip creation flow (Frontend)
+    - Update `Trips.jsx`:
+      - Import `MapLocationPicker` component
+      - Add `showMapPicker` state (boolean)
+      - Add "🗺️ Select on Map" button in create modal (after origin/destination inputs)
+      - Add `handleMapSelection` function:
+        - Update form state with selected coordinates and names
+        - Close map picker modal
+      - Render `<MapLocationPicker onConfirm={handleMapSelection} onCancel={() => setShowMapPicker(false)} />` when `showMapPicker` is true
+      - Display selected location names in form if available
+    - _Bug_Condition: isBugCondition(tripCreation) where map picker not integrated_
+    - _Expected_Behavior: Map picker accessible from trip creation form, coordinates populate form (requirements 2.5, 2.8)_
+    - _Preservation: Text-based coordinate input still works (requirement 3.11)_
+    - _Requirements: 1.4, 1.5, 1.6, 2.5, 2.6, 2.7, 2.8, 2.9_
+
+  - [x] 3.7 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Trip Update, Route Display, and Location Selection Work Correctly
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bugs are fixed)
+    - Verify:
+      - Trip update endpoint returns success for DRAFT trips
+      - Route polyline contains >2 points (road-following)
+      - Map picker component is available and functional
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14_
+
+  - [x] 3.8 Verify preservation tests still pass
+    - **Property 2: Preservation** - Existing Trip Management and Map Display Behavior Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix:
+      - Trip creation, dispatch, completion, cancellation logic unchanged
+      - Text-based coordinate input still works
+      - Map markers, filters, route toggle, and popups still work
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.11, 3.13, 3.14, 3.15, 3.16, 3.17, 3.18_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run all exploration and preservation tests
+  - Verify no regressions in existing functionality
+  - Confirm all three features work as expected:
+    - Trip update functionality for DRAFT trips
+    - OSRM route display with retry logic and fallback indicators
+    - Interactive map-based location selection with custom naming
+  - Ask the user if questions arise or if manual testing is needed

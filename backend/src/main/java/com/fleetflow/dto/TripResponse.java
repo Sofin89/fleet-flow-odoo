@@ -15,6 +15,8 @@ public class TripResponse {
     private String driverName;
     private String origin;
     private String destination;
+    private String originName;
+    private String destinationName;
     private BigDecimal cargoWeightKg;
     private BigDecimal maxCapacityKg;
     private BigDecimal revenue;

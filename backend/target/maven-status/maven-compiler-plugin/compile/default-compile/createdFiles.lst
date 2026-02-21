@@ -33,6 +33,7 @@ com/fleetflow/enums/Role.class
 com/fleetflow/dto/VehicleResponse.class
 com/fleetflow/dto/DashboardKPI.class
 com/fleetflow/service/AuthService.class
+com/fleetflow/service/OSRMRouteService$RouteData.class
 com/fleetflow/entity/VehicleLocation.class
 com/fleetflow/exception/GlobalExceptionHandler.class
 com/fleetflow/repository/MaintenanceLogRepository.class
@@ -60,6 +61,7 @@ com/fleetflow/config/SecurityConfig.class
 com/fleetflow/entity/Trip.class
 com/fleetflow/dto/TripResponse$TripResponseBuilder.class
 com/fleetflow/config/DataSeeder.class
+com/fleetflow/service/OSRMRouteService$OSRMResponse.class
 com/fleetflow/controller/AuthController.class
 com/fleetflow/dto/FuelLogResponse.class
 com/fleetflow/entity/MaintenanceLog$MaintenanceLogBuilder.class
@@ -74,6 +76,7 @@ com/fleetflow/controller/ReportController.class
 com/fleetflow/enums/DutyStatus.class
 com/fleetflow/service/ReportService.class
 com/fleetflow/dto/RegisterRequest.class
+com/fleetflow/service/OSRMRouteService$OSRMRoute.class
 com/fleetflow/repository/DriverLocationRepository.class
 com/fleetflow/service/MapTrackingService.class
 com/fleetflow/entity/DriverLocation.class
@@ -87,3 +90,4 @@ com/fleetflow/entity/Vehicle.class
 com/fleetflow/service/TripService$1.class
 com/fleetflow/dto/DriverResponse$DriverResponseBuilder.class
 com/fleetflow/service/DriverLocationService.class
+com/fleetflow/service/OSRMRouteService.class

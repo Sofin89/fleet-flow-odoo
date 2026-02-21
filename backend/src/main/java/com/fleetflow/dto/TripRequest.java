@@ -18,6 +18,10 @@ public class TripRequest {
     @NotBlank(message = "Destination is required")
     private String destination;
 
+    private String originName;
+
+    private String destinationName;
+
     @NotNull(message = "Cargo weight is required")
     @DecimalMin(value = "0.01", message = "Cargo weight must be positive")
     private BigDecimal cargoWeightKg;

@@ -73,6 +73,8 @@ public class TripService {
                 .driver(driver)
                 .origin(request.getOrigin())
                 .destination(request.getDestination())
+                .originName(request.getOriginName())
+                .destinationName(request.getDestinationName())
                 .cargoWeightKg(request.getCargoWeightKg())
                 .revenue(request.getRevenue() != null ? request.getRevenue() : BigDecimal.ZERO)
                 .startOdometer(vehicle.getOdometerKm())
@@ -83,6 +85,67 @@ public class TripService {
         log.info("Trip created: {} -> {} (Vehicle: {}, Driver: {})",
                 trip.getOrigin(), trip.getDestination(), vehicle.getLicensePlate(), driver.getFullName());
         return toResponse(trip);
+    }
+
+    @Transactional
+    public TripResponse updateTrip(Long id, TripRequest request) {
+        Trip trip = findTripById(id);
+
+        // Validate: only DRAFT trips can be updated
+        if (trip.getStatus() != TripStatus.DRAFT) {
+            throw new BusinessException("Only DRAFT trips can be updated. Current status: " + trip.getStatus());
+        }
+
+        // Load and validate vehicle/driver
+        Vehicle vehicle = vehicleService.findVehicleById(request.getVehicleId());
+        Driver driver = driverService.findDriverById(request.getDriverId());
+
+        // Run all business validations (same as createTrip)
+        validateTripBusinessRules(vehicle, driver, request);
+
+        // Update trip fields
+        trip.setVehicle(vehicle);
+        trip.setDriver(driver);
+        trip.setOrigin(request.getOrigin());
+        trip.setDestination(request.getDestination());
+        trip.setOriginName(request.getOriginName());
+        trip.setDestinationName(request.getDestinationName());
+        trip.setCargoWeightKg(request.getCargoWeightKg());
+        trip.setRevenue(request.getRevenue() != null ? request.getRevenue() : BigDecimal.ZERO);
+        trip.setStartOdometer(vehicle.getOdometerKm());
+
+        trip = tripRepository.save(trip);
+        log.info("Trip {} updated", trip.getId());
+        return toResponse(trip);
+    }
+
+    private void validateTripBusinessRules(Vehicle vehicle, Driver driver, TripRequest request) {
+        // Business Rule: Check vehicle is available
+        if (vehicle.getStatus() != VehicleStatus.AVAILABLE) {
+            throw new BusinessException("Vehicle '" + vehicle.getName() + "' is not available. Current status: " + vehicle.getStatus());
+        }
+
+        // Business Rule: Check driver is on duty
+        if (driver.getDutyStatus() != DutyStatus.ON_DUTY) {
+            throw new BusinessException("Driver '" + driver.getFullName() + "' is not on duty. Current status: " + driver.getDutyStatus());
+        }
+
+        // Business Rule: Check license not expired
+        if (!driver.isLicenseValid()) {
+            throw new BusinessException("Driver '" + driver.getFullName() + "' has an expired license (Expired: " + driver.getLicenseExpiry() + ")");
+        }
+
+        // Business Rule: Check license category matches vehicle type
+        if (!isLicenseCategoryCompatible(driver.getLicenseCategory(), vehicle.getVehicleType())) {
+            throw new BusinessException("Driver's license category (" + driver.getLicenseCategory() +
+                    ") is not valid for vehicle type (" + vehicle.getVehicleType() + ")");
+        }
+
+        // Business Rule: Cargo weight vs max capacity
+        if (request.getCargoWeightKg().compareTo(vehicle.getMaxLoadCapacityKg()) > 0) {
+            throw new BusinessException("Cargo weight (" + request.getCargoWeightKg() +
+                    " kg) exceeds vehicle max capacity (" + vehicle.getMaxLoadCapacityKg() + " kg)");
+        }
     }
 
     @Transactional
@@ -186,6 +249,8 @@ public class TripService {
                 .driverName(t.getDriver().getFullName())
                 .origin(t.getOrigin())
                 .destination(t.getDestination())
+                .originName(t.getOriginName())
+                .destinationName(t.getDestinationName())
                 .cargoWeightKg(t.getCargoWeightKg())
                 .maxCapacityKg(t.getVehicle().getMaxLoadCapacityKg())
                 .revenue(t.getRevenue())

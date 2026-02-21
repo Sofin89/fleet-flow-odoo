@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { mapAPI } from '../api';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Users, Truck } from 'lucide-react';
+import { Users, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Fix Leaflet default icons
@@ -14,13 +14,9 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-// Driver icon (person)
+// SVG icons
 const driverSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-
-// Vehicle icon (truck)
 const truckSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
-
-// Combined icon (truck + person)
 const combinedSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
 
 const makeIcon = (color, svg, size = 32) => L.divIcon({
@@ -37,14 +33,29 @@ const makeIcon = (color, svg, size = 32) => L.divIcon({
     popupAnchor: [0, -size],
 });
 
-// Marker icons per type
+const pinIcon = (emoji) => L.divIcon({
+    className: '',
+    html: `<div style="font-size:18px;text-shadow:0 1px 3px rgba(0,0,0,0.4);">${emoji}</div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+});
+
+const warningIcon = L.divIcon({
+    className: '',
+    html: `<div style="font-size:20px;text-shadow:0 1px 3px rgba(0,0,0,0.4);">⚠️</div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+});
+
 const icons = {
-    DRIVER_ON: makeIcon('#27ae60', driverSVG),       // green (on duty)
-    DRIVER_OFF: makeIcon('#7f8c8d', driverSVG),      // gray (off duty)
-    VEHICLE_TRIP: makeIcon('#2980b9', truckSVG),      // blue (on trip)
-    VEHICLE_IDLE: makeIcon('#95a5a6', truckSVG),      // light gray (parked)
-    VEHICLE_SHOP: makeIcon('#e67e22', truckSVG),      // orange (in shop)
-    COMBINED: makeIcon('#8e44ad', combinedSVG, 38),   // purple (driver + vehicle)
+    DRIVER_ON: makeIcon('#27ae60', driverSVG),
+    DRIVER_OFF: makeIcon('#7f8c8d', driverSVG),
+    VEHICLE_TRIP: makeIcon('#2980b9', truckSVG),
+    VEHICLE_IDLE: makeIcon('#95a5a6', truckSVG),
+    VEHICLE_SHOP: makeIcon('#e67e22', truckSVG),
+    COMBINED: makeIcon('#8e44ad', combinedSVG, 38),
+    ORIGIN: pinIcon('📍'),
+    DEST: pinIcon('🏁'),
 };
 
 function getIcon(marker) {
@@ -65,11 +76,62 @@ function FlyToMarker({ position }) {
     return null;
 }
 
+function formatETA(minutes) {
+    if (!minutes || minutes <= 0) return 'Arrived';
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function Toggle({ checked, onChange, label }) {
+    return (
+        <div onClick={onChange} style={{
+            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+            fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)',
+            padding: '6px 12px', borderRadius: 6,
+            background: checked ? 'rgba(142, 68, 173, 0.08)' : 'transparent',
+            border: `1px solid ${checked ? '#8e44ad' : 'var(--border)'}`,
+            transition: '0.2s', userSelect: 'none',
+        }}>
+            <div style={{
+                width: 34, height: 18, borderRadius: 9, padding: 2,
+                background: checked ? '#8e44ad' : '#ccc', transition: '0.2s',
+                display: 'flex', alignItems: 'center',
+                justifyContent: checked ? 'flex-end' : 'flex-start',
+            }}>
+                <div style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }} />
+            </div>
+            {label}
+        </div>
+    );
+}
+
+// ─── Polyline Helpers ─────────────────────────────────────
+function closestPointIndex(polyline, lat, lng) {
+    let minDist = Infinity, bestIdx = 0;
+    for (let i = 0; i < polyline.length; i++) {
+        const dLat = polyline[i][0] - lat;
+        const dLng = polyline[i][1] - lng;
+        const dist = dLat * dLat + dLng * dLng;
+        if (dist < minDist) { minDist = dist; bestIdx = i; }
+    }
+    return bestIdx;
+}
+// ───────────────────────────────────────────────────────────────────
+
 export default function LiveMap() {
     const [markers, setMarkers] = useState([]);
     const [selectedKey, setSelectedKey] = useState(null);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
+    const [search, setSearch] = useState('');
+    const [showRoutes, setShowRoutes] = useState(true);
+    const [speedFilter, setSpeedFilter] = useState('ALL');
+    // No longer need separate route polylines state - using backend data
 
     const fetchMarkers = async () => {
         try {
@@ -91,10 +153,21 @@ export default function LiveMap() {
             m.markerType === 'DRIVER' ? `d-${m.driverId}` :
                 `c-${m.driverId}-${m.vehicleId}`;
 
-    const filtered = markers.filter(m => {
-        if (filter === 'ALL') return true;
-        return m.markerType === filter;
-    });
+    const filtered = useMemo(() => {
+        return markers.filter(m => {
+            if (filter !== 'ALL' && m.markerType !== filter) return false;
+            if (speedFilter === 'MOVING' && (m.speed || 0) <= 0) return false;
+            if (speedFilter === 'STOPPED' && (m.speed || 0) > 0) return false;
+            if (search) {
+                const q = search.toLowerCase();
+                const fields = [m.driverName, m.vehicleName, m.vehicleModel,
+                m.licensePlate, m.tripOrigin, m.tripDestination
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (!fields.includes(q)) return false;
+            }
+            return true;
+        });
+    }, [markers, filter, speedFilter, search]);
 
     const selected = filtered.find(m => markerKey(m) === selectedKey);
     const selectedPos = selected ? { lat: selected.latitude, lng: selected.longitude } : null;
@@ -113,6 +186,30 @@ export default function LiveMap() {
         DRIVER: markers.filter(m => m.markerType === 'DRIVER').length,
     };
 
+    // Build split route lines from backend route data
+    const routeLines = useMemo(() => {
+        if (!showRoutes) return [];
+        return filtered
+            .filter(m => m.markerType === 'COMBINED' && m.routePolyline)
+            .map(m => {
+                const fullRoute = m.routePolyline;
+                const driverPos = [m.latitude, m.longitude];
+                const splitIdx = closestPointIndex(fullRoute, m.latitude, m.longitude);
+                
+                return {
+                    key: markerKey(m),
+                    completed: fullRoute.slice(0, splitIdx + 1),
+                    remaining: fullRoute.slice(splitIdx),
+                    snappedPos: fullRoute[splitIdx],
+                    originPos: fullRoute[0],
+                    destPos: fullRoute[fullRoute.length - 1],
+                    origin: m.tripOrigin,
+                    dest: m.tripDestination,
+                    isFallback: m.isRouteFallback,
+                };
+            });
+    }, [filtered, showRoutes]);
+
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
 
     return (
@@ -123,8 +220,8 @@ export default function LiveMap() {
                 </p>
             </div>
 
-            {/* Filter tabs */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {/* Controls row */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 {['ALL', 'COMBINED', 'VEHICLE', 'DRIVER'].map(f => (
                     <button key={f} onClick={() => setFilter(f)}
                         style={{
@@ -135,6 +232,37 @@ export default function LiveMap() {
                             cursor: 'pointer', transition: '0.15s',
                         }}>
                         {f === 'ALL' ? '🗺 All' : f === 'COMBINED' ? '🟣 Driving' : f === 'VEHICLE' ? '🔵 Vehicles' : '🟢 Drivers'} ({counts[f]})
+                    </button>
+                ))}
+                <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+                <Toggle checked={showRoutes} onChange={() => setShowRoutes(v => !v)} label="🛣️ Routes" />
+            </div>
+
+            {/* Secondary filters */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1, maxWidth: 260 }}>
+                    <Search size={14} style={{
+                        position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                        color: 'var(--text-400)', pointerEvents: 'none',
+                    }} />
+                    <input type="text" placeholder="Search name, plate, route..."
+                        value={search} onChange={e => setSearch(e.target.value)}
+                        style={{
+                            width: '100%', padding: '7px 10px 7px 30px', borderRadius: 6,
+                            border: '1px solid var(--border)', fontSize: '0.78rem',
+                            background: '#fff', outline: 'none',
+                        }} />
+                </div>
+                {['ALL', 'MOVING', 'STOPPED'].map(s => (
+                    <button key={s} onClick={() => setSpeedFilter(s)}
+                        style={{
+                            padding: '5px 10px', borderRadius: 5, fontSize: '0.72rem', fontWeight: 600,
+                            border: speedFilter === s ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                            background: speedFilter === s ? 'rgba(41, 128, 185, 0.08)' : '#fff',
+                            color: speedFilter === s ? 'var(--primary)' : 'var(--text-500)',
+                            cursor: 'pointer', transition: '0.15s',
+                        }}>
+                        {s === 'ALL' ? 'All' : s === 'MOVING' ? '🟢 Moving' : '⏸ Stopped'}
                     </button>
                 ))}
             </div>
@@ -148,11 +276,9 @@ export default function LiveMap() {
                         const key = markerKey(m);
                         const label = m.markerType === 'COMBINED'
                             ? `${m.driverName} → ${m.vehicleName}`
-                            : m.markerType === 'VEHICLE'
-                                ? m.vehicleName
-                                : m.driverName;
+                            : m.markerType === 'VEHICLE' ? m.vehicleName : m.driverName;
                         const sub = m.markerType === 'COMBINED'
-                            ? `${m.vehicleModel} · ${m.licensePlate}`
+                            ? `${m.tripOrigin} → ${m.tripDestination}`
                             : m.markerType === 'VEHICLE'
                                 ? `${m.vehicleModel} · ${m.vehicleStatus?.replace('_', ' ')}`
                                 : `${m.licenseCategory} · ${m.dutyStatus?.replace('_', ' ')}`;
@@ -165,6 +291,28 @@ export default function LiveMap() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div className="dr-name" style={{ fontSize: '0.82rem' }}>{label}</div>
                                     <div className="dr-meta">{sub}</div>
+                                    {m.markerType === 'COMBINED' && m.progressPercent != null && (
+                                        <div style={{ marginTop: 4 }}>
+                                            <div style={{
+                                                height: 4, borderRadius: 2, background: '#e5e7eb',
+                                                overflow: 'hidden', width: '100%',
+                                            }}>
+                                                <div style={{
+                                                    width: `${Math.min(100, m.progressPercent)}%`,
+                                                    height: '100%', borderRadius: 2,
+                                                    background: 'linear-gradient(90deg, #27ae60, #8e44ad)',
+                                                    transition: 'width 0.3s',
+                                                }} />
+                                            </div>
+                                            <div style={{
+                                                display: 'flex', justifyContent: 'space-between',
+                                                fontSize: '0.65rem', color: 'var(--text-400)', marginTop: 2,
+                                            }}>
+                                                <span>{m.remainingDistanceKm?.toFixed(0)} km left</span>
+                                                <span>ETA {formatETA(m.estimatedMinutesRemaining)}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 {m.speed > 0 && (
                                     <div className="dr-speed">{m.speed.toFixed(0)} km/h</div>
@@ -182,58 +330,138 @@ export default function LiveMap() {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                         {selectedPos && <FlyToMarker position={selectedPos} />}
-                        {filtered.map(m => (
-                            <Marker key={markerKey(m)} position={[m.latitude, m.longitude]}
-                                icon={getIcon(m)}
-                                eventHandlers={{ click: () => setSelectedKey(markerKey(m)) }}>
-                                <Popup>
-                                    <div style={{ fontFamily: 'Inter, sans-serif', minWidth: 180 }}>
-                                        {m.markerType === 'COMBINED' ? (
-                                            <>
-                                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#8e44ad', marginBottom: 2 }}>
-                                                    🟣 Active Trip
-                                                </div>
-                                                <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
-                                                    <div><b>Driver:</b> {m.driverName}</div>
-                                                    <div><b>Vehicle:</b> {m.vehicleName} ({m.vehicleModel})</div>
-                                                    <div><b>Plate:</b> {m.licensePlate}</div>
-                                                    <div><b>Safety:</b> {m.safetyScore}/100</div>
-                                                    <div style={{ color: '#8e44ad', fontWeight: 600 }}>Speed: {m.speed?.toFixed(1)} km/h</div>
-                                                </div>
-                                            </>
-                                        ) : m.markerType === 'VEHICLE' ? (
-                                            <>
-                                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#2980b9', marginBottom: 2 }}>
-                                                    🔵 {m.vehicleName}
-                                                </div>
-                                                <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
-                                                    <div>{m.vehicleModel}</div>
-                                                    <div>Plate: {m.licensePlate}</div>
-                                                    <div>Type: {m.vehicleType}</div>
-                                                    <div>Status: {m.vehicleStatus?.replace('_', ' ')}</div>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#27ae60', marginBottom: 2 }}>
-                                                    🟢 {m.driverName}
-                                                </div>
-                                                <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
-                                                    <div>License: {m.licenseNumber}</div>
-                                                    <div>Category: {m.licenseCategory}</div>
-                                                    <div>Status: {m.dutyStatus?.replace('_', ' ')}</div>
-                                                    <div>Safety: {m.safetyScore}/100</div>
-                                                    {m.speed > 0 && <div style={{ color: '#27ae60', fontWeight: 600 }}>Speed: {m.speed?.toFixed(1)} km/h</div>}
-                                                </div>
-                                            </>
-                                        )}
-                                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: 4 }}>
-                                            Updated: {new Date(m.lastUpdated).toLocaleTimeString()}
-                                        </div>
-                                    </div>
-                                </Popup>
-                            </Marker>
+
+                        {/* Route polylines with fallback indicators */}
+                        {routeLines.map(r => (
+                            <span key={`route-${r.key}`}>
+                                <Polyline positions={r.completed}
+                                    pathOptions={{ 
+                                        color: '#27ae60', 
+                                        weight: 5, 
+                                        opacity: r.isFallback ? 0.5 : 0.85,
+                                        dashArray: r.isFallback ? '5, 10' : null 
+                                    }} />
+                                <Polyline positions={r.remaining}
+                                    pathOptions={{ 
+                                        color: '#8e44ad', 
+                                        weight: 4, 
+                                        opacity: r.isFallback ? 0.4 : 0.6, 
+                                        dashArray: '10, 8' 
+                                    }} />
+                                {r.isFallback && (
+                                    <Marker position={r.originPos} icon={warningIcon}>
+                                        <Popup>
+                                            <div style={{ fontSize: '0.75rem', color: '#e67e22' }}>
+                                                ⚠️ Approximate route (straight-line)<br/>
+                                                Road routing unavailable
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                )}
+                                <Marker position={r.originPos} icon={icons.ORIGIN}>
+                                    <Popup><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.78rem' }}>
+                                        <b style={{ color: '#27ae60' }}>📍 Origin</b><br />{r.origin}
+                                    </div></Popup>
+                                </Marker>
+                                <Marker position={r.destPos} icon={icons.DEST}>
+                                    <Popup><div style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.78rem' }}>
+                                        <b style={{ color: '#c0392b' }}>🏁 Destination</b><br />{r.dest}
+                                    </div></Popup>
+                                </Marker>
+                            </span>
                         ))}
+
+                        {/* Fleet markers */}
+                        {filtered.map(m => {
+                            const route = showRoutes ? routeLines.find(r => r.key === markerKey(m)) : null;
+                            const pos = route?.snappedPos || [m.latitude, m.longitude];
+
+                            return (
+                                <Marker key={markerKey(m)} position={pos}
+                                    icon={getIcon(m)}
+                                    eventHandlers={{ click: () => setSelectedKey(markerKey(m)) }}>
+                                    <Popup>
+                                        <div style={{ fontFamily: 'Inter, sans-serif', minWidth: 200 }}>
+                                            {m.markerType === 'COMBINED' ? (
+                                                <>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#8e44ad', marginBottom: 4 }}>
+                                                        🟣 Active Trip
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
+                                                        <div><b>Driver:</b> {m.driverName}</div>
+                                                        <div><b>Vehicle:</b> {m.vehicleName} ({m.vehicleModel})</div>
+                                                        <div><b>Plate:</b> {m.licensePlate}</div>
+                                                        <div style={{ marginTop: 6, padding: '6px 8px', background: '#f3f0ff', borderRadius: 6 }}>
+                                                            <div style={{ fontWeight: 600, color: '#8e44ad', marginBottom: 4, fontSize: '0.75rem' }}>
+                                                                🛣️ Route
+                                                            </div>
+                                                            <div style={{ fontSize: '0.72rem' }}>
+                                                                📍 {m.tripOrigin} → 🏁 {m.tripDestination}
+                                                            </div>
+                                                            <div style={{ margin: '6px 0', height: 5, borderRadius: 3, background: '#e5e7eb', overflow: 'hidden' }}>
+                                                                <div style={{
+                                                                    width: `${m.progressPercent || 0}%`, height: '100%', borderRadius: 3,
+                                                                    background: 'linear-gradient(90deg, #27ae60, #8e44ad)',
+                                                                }} />
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                                                <span>{m.progressPercent?.toFixed(0)}% complete</span>
+                                                                <span>{m.totalDistanceKm?.toFixed(0)} km total</span>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{
+                                                            marginTop: 6, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4,
+                                                            fontSize: '0.72rem', textAlign: 'center',
+                                                        }}>
+                                                            <div style={{ padding: '4px', background: '#eafaf1', borderRadius: 4 }}>
+                                                                <div style={{ fontWeight: 700, color: '#27ae60' }}>{m.speed?.toFixed(0)}</div>
+                                                                <div style={{ color: '#999' }}>km/h</div>
+                                                            </div>
+                                                            <div style={{ padding: '4px', background: '#fef5e7', borderRadius: 4 }}>
+                                                                <div style={{ fontWeight: 700, color: '#d68910' }}>{m.remainingDistanceKm?.toFixed(0)}</div>
+                                                                <div style={{ color: '#999' }}>km left</div>
+                                                            </div>
+                                                            <div style={{ padding: '4px', background: '#f5eef8', borderRadius: 4 }}>
+                                                                <div style={{ fontWeight: 700, color: '#8e44ad' }}>{formatETA(m.estimatedMinutesRemaining)}</div>
+                                                                <div style={{ color: '#999' }}>ETA</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : m.markerType === 'VEHICLE' ? (
+                                                <>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#2980b9', marginBottom: 2 }}>
+                                                        🔵 {m.vehicleName}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
+                                                        <div>{m.vehicleModel}</div>
+                                                        <div>Plate: {m.licensePlate}</div>
+                                                        <div>Type: {m.vehicleType}</div>
+                                                        <div>Status: {m.vehicleStatus?.replace('_', ' ')}</div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#27ae60', marginBottom: 2 }}>
+                                                        🟢 {m.driverName}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
+                                                        <div>License: {m.licenseNumber}</div>
+                                                        <div>Category: {m.licenseCategory}</div>
+                                                        <div>Status: {m.dutyStatus?.replace('_', ' ')}</div>
+                                                        <div>Safety: {m.safetyScore}/100</div>
+                                                        {m.speed > 0 && <div style={{ color: '#27ae60', fontWeight: 600 }}>Speed: {m.speed?.toFixed(1)} km/h</div>}
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: 4 }}>
+                                                Updated: {new Date(m.lastUpdated).toLocaleTimeString()}
+                                            </div>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            );
+                        })}
                     </MapContainer>
                 </div>
             </div>
