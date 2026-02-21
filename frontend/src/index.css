@@ -160,6 +160,28 @@ a:hover {
   margin-top: 0;
 }
 
+.nav-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-400);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 14px 12px 6px;
+  margin-top: 4px;
+}
+
+.nav-group-label:first-child {
+  padding-top: 10px;
+  margin-top: 0;
+}
+
+.nav-link-sub {
+  padding-left: 28px;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -809,6 +831,31 @@ textarea.form-input {
 
 .empty-state p {
   font-size: 0.85rem;
+}
+
+.page-description {
+  font-size: 0.9rem;
+  color: var(--text-500);
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.risk-badge.risk-high {
+  background: var(--red-bg);
+  color: var(--red);
+}
+.risk-badge.risk-medium {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+.risk-badge.risk-low {
+  background: var(--green-bg);
+  color: var(--green);
 }
 
 .loading-spinner {

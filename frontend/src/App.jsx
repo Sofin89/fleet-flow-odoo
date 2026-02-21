@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
+import RoleGuard from './components/RoleGuard';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
@@ -11,6 +12,9 @@ import FuelLogs from './pages/FuelLogs';
 import Reports from './pages/Reports';
 import LiveMap from './pages/LiveMap';
 import DriverProfile from './pages/DriverProfile';
+import AIPredictive from './pages/AIPredictive';
+import AIFinancial from './pages/AIFinancial';
+import AIDriverPerformance from './pages/AIDriverPerformance';
 
 function ProtectedRoute({ children }) {
     const { user, loading } = useAuth();
@@ -34,6 +38,9 @@ export default function App() {
                 <Route path="fuel-logs" element={<FuelLogs />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="profile" element={<DriverProfile />} />
+                <Route path="ai/predictive" element={<RoleGuard allowedRoles={['MANAGER', 'ANALYST']}><AIPredictive /></RoleGuard>} />
+                <Route path="ai/financial" element={<RoleGuard allowedRoles={['MANAGER', 'ANALYST']}><AIFinancial /></RoleGuard>} />
+                <Route path="ai/driver-performance" element={<RoleGuard allowedRoles={['MANAGER', 'ANALYST']}><AIDriverPerformance /></RoleGuard>} />
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>

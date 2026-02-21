@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
@@ -35,4 +36,10 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
     @Query("SELECT COUNT(t) FROM Trip t WHERE t.driver.id = :driverId AND (t.status = 'COMPLETED' OR t.status = 'CANCELLED')")
     long countFinishedByDriver(@Param("driverId") Long driverId);
+
+    @Query("SELECT t FROM Trip t WHERE t.status = 'COMPLETED' AND t.completedAt >= :from AND t.completedAt < :to")
+    List<Trip> findCompletedBetween(@Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
+    @Query("SELECT t FROM Trip t WHERE t.driver.id = :driverId AND t.status = 'COMPLETED' ORDER BY t.completedAt DESC")
+    List<Trip> findCompletedByDriver(@Param("driverId") Long driverId);
 }

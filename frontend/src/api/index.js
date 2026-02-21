@@ -97,6 +97,13 @@ export const mapAPI = {
     getMarkers: () => api.get('/map/markers'),
 };
 
+// AI features (Fleet Manager & Analyst)
+export const aiAPI = {
+    predictive: () => api.get('/ai/predictive'),
+    financial: () => api.get('/ai/financial'),
+    driverPerformance: () => api.get('/ai/driver-performance'),
+};
+
 // Location API (with retry logic and error handling)
 export { locationAPI } from './locationAPI';
 

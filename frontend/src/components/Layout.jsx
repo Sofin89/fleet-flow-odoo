@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut } from 'lucide-react';
@@ -12,6 +13,9 @@ const pageTitles = {
     '/maintenance': 'Maintenance Logs',
     '/fuel-logs': 'Fuel & Expenses',
     '/reports': 'Analytics & Reports',
+    '/ai/predictive': 'Predictive Analytics',
+    '/ai/financial': 'Financial Intelligence',
+    '/ai/driver-performance': 'Driver Performance',
 };
 
 const roleLabels = {
@@ -39,16 +43,37 @@ export default function Layout() {
                     <h1>FleetFlow</h1>
                 </div>
                 <nav className="sidebar-nav">
-                    {menuItems.map(({ path, label, icon: Icon }) => (
-                        <NavLink 
-                            key={path} 
-                            to={path} 
-                            end={path === '/'} 
-                            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                        >
-                            <Icon /> <span>{label}</span>
-                        </NavLink>
-                    ))}
+                    {menuItems.map((item, idx) => {
+                        if (item.groupLabel && item.items) {
+                            return (
+                                <Fragment key={`ai-${idx}`}>
+                                    <div className="nav-group-label">
+                                        <item.icon size={14} /> <span>{item.groupLabel}</span>
+                                    </div>
+                                    {item.items.map(({ path, label, icon: Icon }) => (
+                                        <NavLink
+                                            key={path}
+                                            to={path}
+                                            className={({ isActive }) => `nav-link nav-link-sub ${isActive ? 'active' : ''}`}
+                                        >
+                                            <Icon size={18} /> <span>{label}</span>
+                                        </NavLink>
+                                    ))}
+                                </Fragment>
+                            );
+                        }
+                        const { path, label, icon: Icon } = item;
+                        return (
+                            <NavLink
+                                key={path}
+                                to={path}
+                                end={path === '/'}
+                                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                            >
+                                <Icon /> <span>{label}</span>
+                            </NavLink>
+                        );
+                    })}
                 </nav>
                 <div className="sidebar-footer">
                     <div className="user-info">

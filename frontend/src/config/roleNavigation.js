@@ -7,7 +7,11 @@ import {
   Fuel,
   BarChart3,
   MapPin,
-  UserCircle
+  UserCircle,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+  Award
 } from 'lucide-react';
 
 /**
@@ -19,7 +23,18 @@ import {
  * Requirements: 6.1, 6.2, 6.3, 6.4
  */
 
-// All available menu items
+// AI features group (Fleet Manager & Analyst)
+export const AI_FEATURES_GROUP = {
+  groupLabel: 'AI features',
+  icon: Sparkles,
+  items: [
+    { path: '/ai/predictive', label: 'Predictive Analytics', icon: TrendingUp },
+    { path: '/ai/financial', label: 'Financial Intelligence', icon: Wallet },
+    { path: '/ai/driver-performance', label: 'Driver Performance', icon: Award }
+  ]
+};
+
+// All available menu items (flat)
 export const ALL_MENU_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/vehicles', label: 'Vehicles', icon: Truck },
@@ -51,7 +66,8 @@ export const ROLE_NAVIGATION = {
   ANALYST: [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/live-map', label: 'Live Map', icon: MapPin },
-    { path: '/reports', label: 'Reports', icon: BarChart3 }
+    { path: '/reports', label: 'Reports', icon: BarChart3 },
+    'AI_GROUP'
   ],
   
   SAFETY_OFFICER: [
@@ -67,22 +83,31 @@ export const ROLE_NAVIGATION = {
 };
 
 /**
- * Get navigation items for a specific role
+ * Get navigation items for a specific role.
+ * Returns a mixed array: plain items { path, label, icon } and/or AI_GROUP placeholder.
+ * Resolve AI_GROUP with AI_FEATURES_GROUP when rendering (Layout).
  * @param {string} role - User role
- * @returns {Array} Array of navigation items for the role
+ * @returns {Array} Array of navigation items (and optional 'AI_GROUP') for the role
  */
 export function getNavigationForRole(role) {
   if (!role) return [];
-  
+
   const navigation = ROLE_NAVIGATION[role];
-  
-  // If role has access to all items, return all
+
   if (navigation === 'ALL') {
-    return ALL_MENU_ITEMS;
+    return [...ALL_MENU_ITEMS, AI_FEATURES_GROUP];
   }
-  
-  // Otherwise return role-specific items
-  return navigation || [];
+
+  if (!navigation) return [];
+  const resolved = [];
+  for (const item of navigation) {
+    if (item === 'AI_GROUP') {
+      resolved.push(AI_FEATURES_GROUP);
+    } else {
+      resolved.push(item);
+    }
+  }
+  return resolved;
 }
 
 /**
@@ -93,5 +118,10 @@ export function getNavigationForRole(role) {
  */
 export function hasAccessToPath(role, path) {
   const navigation = getNavigationForRole(role);
-  return navigation.some(item => item.path === path);
+  return navigation.some(item => {
+    if (item.groupLabel && item.items) {
+      return item.items.some(sub => sub.path === path);
+    }
+    return item.path === path;
+  });
 }
