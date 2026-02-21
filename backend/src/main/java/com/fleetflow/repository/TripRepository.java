@@ -13,6 +13,8 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
     Page<Trip> findByStatus(TripStatus status, Pageable pageable);
 
+    List<Trip> findByStatus(TripStatus status);
+
     List<Trip> findByVehicleId(Long vehicleId);
 
     List<Trip> findByDriverId(Long driverId);
