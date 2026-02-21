@@ -14,6 +14,7 @@ com/fleetflow/dto/TripCompleteRequest$TripCompleteRequestBuilder.class
 com/fleetflow/enums/VehicleType.class
 com/fleetflow/entity/AuditLog$AuditLogBuilder.class
 com/fleetflow/security/JwtAuthFilter.class
+com/fleetflow/service/EmailService.class
 com/fleetflow/dto/MapMarkerDTO$MapMarkerDTOBuilder.class
 com/fleetflow/service/DriverService.class
 com/fleetflow/dto/LocationUpdateRequest.class
@@ -35,6 +36,7 @@ com/fleetflow/repository/TripRepository.class
 com/fleetflow/dto/MaintenanceResponse.class
 com/fleetflow/dto/DriverLocationResponse$DriverLocationResponseBuilder.class
 com/fleetflow/dto/FuelLogResponse$FuelLogResponseBuilder.class
+com/fleetflow/controller/AIController.class
 com/fleetflow/dto/MaintenanceResponse$MaintenanceResponseBuilder.class
 com/fleetflow/controller/DriverController.class
 com/fleetflow/dto/TripResponse.class
@@ -56,6 +58,7 @@ com/fleetflow/repository/VehicleRepository.class
 com/fleetflow/dto/LocationUpdateRequest$LocationUpdateRequestBuilder.class
 com/fleetflow/controller/ReportController.class
 com/fleetflow/service/OSRMRouteService$OSRMRoute.class
+com/fleetflow/service/FinancialIntelligenceService.class
 com/fleetflow/entity/DriverLocation.class
 com/fleetflow/entity/User.class
 com/fleetflow/entity/FuelLog.class
@@ -74,6 +77,7 @@ com/fleetflow/repository/UserRepository.class
 com/fleetflow/config/WebSocketConfig.class
 com/fleetflow/controller/MaintenanceController.class
 com/fleetflow/repository/VehicleLocationRepository.class
+com/fleetflow/service/PredictiveAnalyticsService.class
 com/fleetflow/dto/ApiResponse.class
 com/fleetflow/dto/AuthResponse.class
 com/fleetflow/controller/TripController.class
@@ -89,6 +93,7 @@ com/fleetflow/entity/VehicleLocation.class
 com/fleetflow/exception/UnauthorizedException.class
 com/fleetflow/security/CustomUserDetailsService.class
 com/fleetflow/entity/LocationHistory.class
+com/fleetflow/service/DriverPerformanceService.class
 com/fleetflow/dto/DriverLocationResponse.class
 com/fleetflow/exception/ResourceNotFoundException.class
 com/fleetflow/security/JwtTokenProvider.class

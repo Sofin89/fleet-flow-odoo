@@ -27,6 +27,7 @@
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/enums/TripStatus.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/repository/FuelLogRepository.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/enums/LicenseCategory.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/DriverPerformanceService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/entity/DriverLocation.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/controller/AuthController.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/FuelLogService.java
@@ -43,6 +44,7 @@
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/ReportService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/dto/FuelLogRequest.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/entity/FuelLog.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/EmailService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/dto/LocationUpdateEvent.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/enums/VehicleType.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/MaintenanceService.java
@@ -67,6 +69,7 @@
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/config/SecurityConfig.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/dto/LoginRequest.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/repository/MaintenanceLogRepository.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/FinancialIntelligenceService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/config/DataSeeder.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/config/WebSocketConfig.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/DriverService.java
@@ -79,6 +82,7 @@
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/dto/ApiResponse.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/exception/GlobalExceptionHandler.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/entity/MaintenanceLog.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/PredictiveAnalyticsService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/entity/AuditLog.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/service/AuditLogService.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/dto/DriverResponse.java
@@ -87,3 +91,4 @@
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/enums/Role.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/entity/Driver.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/security/JwtAuthFilter.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/main/java/com/fleetflow/controller/AIController.java

@@ -120,11 +120,11 @@ public class FinancialIntelligenceService {
         if (allLogs.isEmpty()) return Collections.emptyList();
 
         double globalAvgCostPerLiter = allLogs.stream()
-                .map(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
+                .mapToDouble(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
                 .average().orElse(0);
         double globalStdCost = allLogs.stream()
-                .map(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
-                .mapToDouble(x -> Math.pow(x - globalAvgCostPerLiter, 2)).average().orElse(0);
+                .mapToDouble(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
+                .map(x -> Math.pow(x - globalAvgCostPerLiter, 2)).average().orElse(0);
         globalStdCost = Math.sqrt(globalStdCost);
 
         List<Map<String, Object>> result = new ArrayList<>();
@@ -133,7 +133,7 @@ public class FinancialIntelligenceService {
             if (logs.isEmpty()) continue;
 
             double avgCostPerLiter = logs.stream()
-                    .map(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
+                    .mapToDouble(f -> f.getCost().doubleValue() / Math.max(f.getLiters().doubleValue(), 0.001))
                     .average().orElse(0);
             double zScore = globalStdCost > 0 ? (avgCostPerLiter - globalAvgCostPerLiter) / globalStdCost : 0;
             double fraudScore = Math.min(100, Math.max(0, 50 + zScore * 20));

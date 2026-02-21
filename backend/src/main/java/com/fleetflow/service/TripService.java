@@ -26,6 +26,7 @@ public class TripService {
     private final TripRepository tripRepository;
     private final VehicleService vehicleService;
     private final DriverService driverService;
+    private final EmailService emailService;
 
     public Page<TripResponse> getAllTrips(TripStatus status, Long vehicleId, Long driverId, Pageable pageable) {
         return tripRepository.findFiltered(status, vehicleId, driverId, pageable)
@@ -84,6 +85,10 @@ public class TripService {
         trip = tripRepository.save(trip);
         log.info("Trip created: {} -> {} (Vehicle: {}, Driver: {})",
                 trip.getOrigin(), trip.getDestination(), vehicle.getLicensePlate(), driver.getFullName());
+                
+        // Send email notification to driver
+        emailService.sendNewTripEmail(trip);
+        
         return toResponse(trip);
     }
 

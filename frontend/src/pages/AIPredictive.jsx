@@ -166,7 +166,7 @@ export default function AIPredictive() {
                                     <tr key={i}>
                                         <td><strong>{row.driverName}</strong></td>
                                         <td>{row.safetyScore}</td>
-                                        <td>{Number(row.tripCompletionRate * 100).toFixed(1)}%</td>
+                                        <td>{Number(row.tripCompletionRate).toFixed(1)}%</td>
                                         <td>{row.licenseExpiry ?? '—'}</td>
                                         <td>{Number(row.riskProbability).toFixed(1)}%</td>
                                         <td>

@@ -1,91 +1,100 @@
-# FleetFlow - Modular Fleet & Logistics Management System
+<div align="center">
 
-FleetFlow is a comprehensive system designed to manage fleets, track vehicles in real-time, handle maintenance requests, and manage drivers and logistics operations efficiently.
+# 🚚 FleetFlow
+**Next-Generation Modular Fleet & Logistics Management System**
 
-## 🚀 Tech Stack
+*Built for the [Odoo Hackathon] - Empowering transport operations with intelligence and efficiency.*
 
-### Backend
-- **Java 17**
-- **Spring Boot 3.2.2**
-  - Spring Web
-  - Spring Data JPA
-  - Spring Security (JWT Authentication)
-  - Spring WebSocket
-- **PostgreSQL** (Database)
-- **Flyway** (Database Migrations)
-- **Lombok** (Code reduction)
-- **OpenCSV** (CSV processing)
-
-### Frontend
-- **React 18**
-- **Vite** (Build Tool)
-- **React Router** (Navigation)
-- **React Leaflet** (Map Visualization)
-- **Recharts** (Data Visualization)
-- **SockJS & STOMP** (Real-time WebSocket communication)
+</div>
 
 ---
 
-## 📋 Prerequisites
+## 🌟 The Team
+We built this platform during the Odoo Hackathon to solve modern logistics tracking and management issues. 
+Meet the brilliant minds behind FleetFlow:
+* **Sofin Mansuri**
+* **Ismail Mansuri**
+* **Sulem Pomchawala**
+* **Meet Sharma**
 
-Before you begin, ensure you have the following installed on your local machine:
-- **[Java Development Kit (JDK) 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)**
-- **[Node.js](https://nodejs.org/)** (v16 or higher) & **npm**
-- **[PostgreSQL](https://www.postgresql.org/)**
-- **[Maven](https://maven.apache.org/)** (Optional, backend includes a Maven wrapper `mvnw`)
+---
+
+## 🎯 About FleetFlow
+FleetFlow is a comprehensive system designed to manage fleets, track vehicles in real-time, handle maintenance forecasts, and manage drivers and logistics operations efficiently using predictive analytics and real-time mapping technology.
+
+## 🚀 Key Features
+
+### 📍 Real-Time GPS Tracking & Routing
+- Visual live map representation of all active vehicles.
+- Polyline route drawing showing completed and remaining trip segments.
+- Turn-by-turn ETA calculations using the OSRM road-following network.
+- Integration to immediately open dispatched trips in Google Maps.
+
+### 🧠 AI Predictive Analytics 
+- **Maintenance Forecast (30 Days):** Deterministically predicts upcoming vehicle maintenance, allowing proactive servicing before breakdowns occur.
+- **Demand Forecasting:** Analyzes the last 14 days of trip data to generate a rolling forecast for upcoming weekly demand.
+- **Revenue Projections:** Calculates a moving average to predict 30-day projected revenue streams.
+- **Driver Risk Profiling:** Consolidates safety scores, trip completion rates, and license expiry timelines into a unified driver risk probability model.
+
+### 📧 Automated Dispatch Communications
+- Zero-friction background emailing utilizing Spring `@Async`.
+- Emails trip manifests directly to assigned drivers automatically upon trip creation.
+
+### � Comprehensive Personnel Management
+- Intuitive "Add Driver" forms, tracking licenses to specific vehicle categories (Truck, Van, Bike).
+- Leaderboard dashboard for dispatchers tracking on-time percentages, efficiency metrics, and highest-performing drivers.
+
+---
+
+## 💻 Tech Stack
+
+### Backend Infrastructure
+- **Java 17 & Spring Boot 3.2**
+- **Spring Security (JWT):** Securing endpoints via role-based access tokens.
+- **Spring WebSocket (STOMP):** Architecture ready for real-time driver coordinate streaming.
+- **PostgreSQL & Flyway:** Robust relational databases with version-controlled schema migrations.
+- **JavaMailSender:** Programmatic email dispatches for logistics notifications.
+- **Lombok:** Boilerplate code reduction.
+
+### Frontend Client
+- **React 18 & Vite:** Lightning-fast compilation and highly responsive component rendering.
+- **React Router:** Seamless Single Page Application (SPA) navigation.
+- **React Leaflet:** Advanced open-source mapping.
+- **Recharts:** Clean, responsive data visualization.
 
 ---
 
 ## 🛠️ Setup Instructions
 
-### 1. Clone the repository
-```bash
-git clone <repository-url>
-cd fleet-flow-odoo
-```
+### 1. Database Setup
+Ensure you have a PostgreSQL server running. FleetFlow connects to a cloud NeonDB instance by default, but you can configure a local database in `backend/src/main/resources/application.properties`.
 
 ### 2. Backend Setup
+```bash
+git clone <repository-url>
+cd fleet-flow-odoo/backend
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Configure the database:
-   Update `src/main/resources/application.properties` or `application.yml` with your PostgreSQL credentials. Ensure you have created a database in PostgreSQL for this project.
+# Build the project using the packaged Maven wrapper
+./mvnw clean install
 
-3. Build and run the backend application:
-   ```bash
-   ./mvnw clean install
-   ./mvnw spring-boot:run
-   ```
-   *The backend server will typically start on `http://localhost:8080`.*
+# Run the API server
+./mvnw spring-boot:run
+```
+*The Spring Boot server will initialize and listen on `http://localhost:8080`.*
 
 ### 3. Frontend Setup
+```bash
+cd fleet-flow-odoo/frontend
 
-1. Open a new terminal and navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install the necessary dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend application will typically be accessible at `http://localhost:5173`.*
+# Install node dependencies
+npm install
 
----
-
-## 🌟 Key Features
-- **Real-Time Tracking:** Visualize vehicle locations and routes on an interactive map.
-- **Driver Management:** Keep track of driver records, assignments, and statuses.
-- **Maintenance Logs:** Record and monitor vehicle maintenance requests and history.
-- **Trip Management:** Plan, dispatch, and track ongoing trips.
-- **Secure Access:** Role-based access control leveraging JWT authentication.
+# Boot the Vite development server
+npm run dev
+```
+*The React application will be available at `http://localhost:5173`.*
 
 ---
 
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+This codebase is an open submission for the Odoo Hackathon. Feel free to explore the repository!
