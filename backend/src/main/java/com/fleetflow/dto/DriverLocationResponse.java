@@ -13,7 +13,9 @@ public class DriverLocationResponse {
     private String licenseNumber;
     private Double latitude;
     private Double longitude;
+    private Double accuracy;
     private Double speed;
     private Double heading;
+    private Boolean sharingActive;
     private LocalDateTime lastUpdated;
 }

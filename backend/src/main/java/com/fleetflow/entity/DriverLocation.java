@@ -23,11 +23,23 @@ public class DriverLocation {
     @Column(nullable = false)
     private Double longitude;
 
+    @Column
+    private Double accuracy;
+
     @Column(nullable = false)
     private Double speed;
 
     @Column
     private Double heading;
+
+    @Column(nullable = false)
+    private Boolean sharingActive = false;
+
+    @Column
+    private Integer consecutiveFailures = 0;
+
+    @Column
+    private String lastError;
 
     @Column(nullable = false)
     private LocalDateTime lastUpdated;

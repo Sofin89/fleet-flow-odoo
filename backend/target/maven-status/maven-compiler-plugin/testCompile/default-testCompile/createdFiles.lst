@@ -1,2 +1,8 @@
-com/fleetflow/bugfix/ProductionReadyMapFeaturePreservationTest.class
+com/fleetflow/service/AuditLogServiceTest.class
 com/fleetflow/bugfix/ProductionReadyMapFeatureBugExplorationTest.class
+com/fleetflow/websocket/LocationWebSocketHandlerTest.class
+com/fleetflow/service/DriverLocationServiceTest.class
+com/fleetflow/repository/LocationHistoryRepositoryTest.class
+com/fleetflow/security/RoleBasedAccessInterceptorTest.class
+com/fleetflow/security/RoleBasedAccessInterceptorTest$TestController.class
+com/fleetflow/bugfix/ProductionReadyMapFeaturePreservationTest.class

@@ -1,2 +1,7 @@
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/repository/LocationHistoryRepositoryTest.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/security/RoleBasedAccessInterceptorTest.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/bugfix/ProductionReadyMapFeaturePreservationTest.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/service/DriverLocationServiceTest.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/websocket/LocationWebSocketHandlerTest.java
+/Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/service/AuditLogServiceTest.java
 /Users/yashcomputers/Desktop/fleet-flow-odoo/backend/src/test/java/com/fleetflow/bugfix/ProductionReadyMapFeatureBugExplorationTest.java

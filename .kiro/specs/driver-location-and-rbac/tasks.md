@@ -15,28 +15,28 @@ The implementation follows a layered approach: database schema → backend servi
     - Create audit_logs table with indexes
     - _Requirements: 13.2, 13.3, 7.5_
   
-  - [-] 1.2 Create LocationHistory entity and repository
+  - [x] 1.2 Create LocationHistory entity and repository
     - Write LocationHistory JPA entity with validation constraints
     - Create LocationHistoryRepository interface with custom query methods
     - _Requirements: 11.3, 11.4, 11.5_
   
-  - [~] 1.3 Create AuditLog entity and repository
+  - [x] 1.3 Create AuditLog entity and repository
     - Write AuditLog JPA entity
     - Create AuditLogRepository interface
     - _Requirements: 7.5_
   
-  - [~] 1.4 Update DriverLocation entity
+  - [x] 1.4 Update DriverLocation entity
     - Add new fields: sharingActive, accuracy, consecutiveFailures, lastError
     - Update validation constraints
     - _Requirements: 2.5, 15.1_
 
 - [ ] 2. Backend RBAC infrastructure
-  - [~] 2.1 Create @RoleAllowed annotation
+  - [x] 2.1 Create @RoleAllowed annotation
     - Define custom annotation with String[] value parameter
     - Set retention policy to RUNTIME and target to METHOD
     - _Requirements: 7.1, 7.3_
   
-  - [~] 2.2 Implement RoleBasedAccessInterceptor
+  - [x] 2.2 Implement RoleBasedAccessInterceptor
     - Create HandlerInterceptor implementation
     - Extract role from SecurityContext
     - Check role against @RoleAllowed annotation
@@ -48,7 +48,7 @@ The implementation follows a layered approach: database schema → backend servi
     - **Validates: Requirements 7.1, 7.3**
     - Generate random roles and endpoints, verify authorization logic
   
-  - [~] 2.4 Create AuditLogService
+  - [x] 2.4 Create AuditLogService
     - Implement logUnauthorizedAccess method
     - Save audit log entries to database
     - _Requirements: 7.5_
@@ -58,12 +58,12 @@ The implementation follows a layered approach: database schema → backend servi
     - **Validates: Requirements 7.5**
     - Generate random unauthorized access attempts, verify all are logged
   
-  - [~] 2.6 Register interceptor in WebMvcConfigurer
+  - [x] 2.6 Register interceptor in WebMvcConfigurer
     - Add RoleBasedAccessInterceptor to interceptor registry
     - _Requirements: 7.1_
 
 - [ ] 3. Backend location services
-  - [~] 3.1 Create LocationWebSocketHandler
+  - [x] 3.1 Create LocationWebSocketHandler
     - Implement broadcastLocationUpdate method
     - Implement broadcastSharingStatusChange method
     - Use SimpMessagingTemplate to send to /topic/locations
@@ -74,7 +74,7 @@ The implementation follows a layered approach: database schema → backend servi
     - **Validates: Requirements 1.4, 3.2**
     - Generate random location updates, verify all are broadcast
   
-  - [~] 3.3 Implement DriverLocationService core methods
+  - [x] 3.3 Implement DriverLocationService core methods
     - Implement startLocationSharing method
     - Implement stopLocationSharing method
     - Implement updateLocation method with validation
@@ -97,7 +97,7 @@ The implementation follows a layered approach: database schema → backend servi
     - **Validates: Requirements 2.4, 13.4**
     - Verify sharing_active flag set to false and no new captures
   
-  - [~] 3.7 Implement location history methods
+  - [x] 3.7 Implement location history methods
     - Implement getLocationHistory with date range validation
     - Implement saveToHistory helper method
     - Enforce MAX_HISTORY_DAYS = 30 constraint
@@ -108,7 +108,7 @@ The implementation follows a layered approach: database schema → backend servi
     - **Validates: Requirements 11.5**
     - Generate random date ranges, verify 30-day limit enforcement
   
-  - [~] 3.9 Implement scheduled purge job
+  - [x] 3.9 Implement scheduled purge job
     - Create @Scheduled method to purge records older than 90 days
     - Run daily at 2 AM
     - Log purge operations
@@ -120,7 +120,7 @@ The implementation follows a layered approach: database schema → backend servi
     - Create records with various ages, verify 90-day purge
 
 - [ ] 4. Backend API controllers
-  - [~] 4.1 Create DriverLocationController with endpoints
+  - [-] 4.1 Create DriverLocationController with endpoints
     - POST /api/drivers/locations/start with @RoleAllowed("DRIVER")
     - POST /api/drivers/locations/stop with @RoleAllowed("DRIVER")
     - PUT /api/drivers/locations with @RoleAllowed("DRIVER")
