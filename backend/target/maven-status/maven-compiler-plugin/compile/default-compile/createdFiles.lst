@@ -17,6 +17,7 @@ com/fleetflow/security/JwtAuthFilter.class
 com/fleetflow/dto/MapMarkerDTO$MapMarkerDTOBuilder.class
 com/fleetflow/service/DriverService.class
 com/fleetflow/dto/LocationUpdateRequest.class
+com/fleetflow/exception/WebSocketException.class
 com/fleetflow/enums/VehicleStatus.class
 com/fleetflow/controller/FuelLogController.class
 com/fleetflow/dto/DriverRequest.class
@@ -64,6 +65,7 @@ com/fleetflow/dto/LocationHistoryResponse$LocationHistoryResponseBuilder.class
 com/fleetflow/security/RoleBasedAccessInterceptor.class
 com/fleetflow/service/TripService$1.class
 com/fleetflow/dto/DriverResponse$DriverResponseBuilder.class
+com/fleetflow/exception/HistoryRangeTooLargeException.class
 com/fleetflow/exception/BusinessException.class
 com/fleetflow/dto/FuelLogRequest.class
 com/fleetflow/entity/Driver.class
@@ -82,13 +84,16 @@ com/fleetflow/service/TripService.class
 com/fleetflow/dto/DashboardKPI$DashboardKPIBuilder.class
 com/fleetflow/service/MaintenanceService.class
 com/fleetflow/service/AuthService.class
+com/fleetflow/exception/InvalidLocationDataException.class
 com/fleetflow/entity/VehicleLocation.class
+com/fleetflow/exception/UnauthorizedException.class
 com/fleetflow/security/CustomUserDetailsService.class
 com/fleetflow/entity/LocationHistory.class
 com/fleetflow/dto/DriverLocationResponse.class
 com/fleetflow/exception/ResourceNotFoundException.class
 com/fleetflow/security/JwtTokenProvider.class
 com/fleetflow/dto/SharingStatusEvent$SharingStatusEventBuilder.class
+com/fleetflow/exception/LocationSharingNotActiveException.class
 com/fleetflow/dto/LoginRequest.class
 com/fleetflow/dto/VehicleRequest.class
 com/fleetflow/dto/VehicleResponse$VehicleResponseBuilder.class

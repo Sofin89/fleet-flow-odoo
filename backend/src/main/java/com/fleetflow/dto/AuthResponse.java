@@ -10,4 +10,5 @@ public class AuthResponse {
     private String fullName;
     private Role role;
     private Long userId;
+    private Long driverId; // Driver ID if user is a driver
 }

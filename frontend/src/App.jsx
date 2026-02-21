@@ -10,6 +10,7 @@ import Maintenance from './pages/Maintenance';
 import FuelLogs from './pages/FuelLogs';
 import Reports from './pages/Reports';
 import LiveMap from './pages/LiveMap';
+import DriverProfile from './pages/DriverProfile';
 
 function ProtectedRoute({ children }) {
     const { user, loading } = useAuth();
@@ -32,6 +33,7 @@ export default function App() {
                 <Route path="maintenance" element={<Maintenance />} />
                 <Route path="fuel-logs" element={<FuelLogs />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="profile" element={<DriverProfile />} />
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>

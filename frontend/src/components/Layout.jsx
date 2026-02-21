@@ -1,28 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import {
-    LayoutDashboard, Truck, Users, Navigation, Wrench,
-    Fuel, BarChart3, LogOut, MapPin
-} from 'lucide-react';
-
-// Navigation items with role-based access
-const navItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard, section: 'overview', roles: ['MANAGER', 'ANALYST', 'DISPATCHER', 'SAFETY_OFFICER'] },
-    { path: '/vehicles', label: 'Vehicles', icon: Truck, section: 'fleet', roles: ['MANAGER', 'DISPATCHER', 'SAFETY_OFFICER'] },
-    { path: '/drivers', label: 'Drivers', icon: Users, section: 'fleet', roles: ['MANAGER', 'DISPATCHER', 'SAFETY_OFFICER'] },
-    { path: '/live-map', label: 'Live Map', icon: MapPin, section: 'fleet', roles: ['MANAGER', 'DISPATCHER', 'DRIVER'] },
-    { path: '/trips', label: 'Trips', icon: Navigation, section: 'ops', roles: ['MANAGER', 'DISPATCHER', 'DRIVER'] },
-    { path: '/maintenance', label: 'Maintenance', icon: Wrench, section: 'ops', roles: ['MANAGER', 'SAFETY_OFFICER'] },
-    { path: '/fuel-logs', label: 'Fuel & Expenses', icon: Fuel, section: 'ops', roles: ['MANAGER', 'ANALYST'] },
-    { path: '/reports', label: 'Reports', icon: BarChart3, section: 'analytics', roles: ['MANAGER', 'ANALYST', 'SAFETY_OFFICER'] },
-];
-
-const sections = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'fleet', label: 'Fleet' },
-    { key: 'ops', label: 'Operations' },
-    { key: 'analytics', label: 'Analytics' },
-];
+import { LogOut } from 'lucide-react';
+import { getNavigationForRole } from '../config/roleNavigation';
 
 const pageTitles = {
     '/': 'Dashboard',
@@ -49,12 +28,8 @@ export default function Layout() {
     const title = pageTitles[location.pathname] || 'FleetFlow';
     const userRole = user?.role || 'MANAGER';
 
-    // Filter nav items by user role
-    const visibleItems = navItems.filter(n => n.roles.includes(userRole));
-    // Only show sections that have visible items
-    const visibleSections = sections.filter(sec =>
-        visibleItems.some(n => n.section === sec.key)
-    );
+    // Get navigation items for user's role using ROLE_NAVIGATION configuration
+    const menuItems = getNavigationForRole(userRole);
 
     return (
         <div className="app-layout">
@@ -64,15 +39,15 @@ export default function Layout() {
                     <h1>FleetFlow</h1>
                 </div>
                 <nav className="sidebar-nav">
-                    {visibleSections.map(sec => (
-                        <div key={sec.key}>
-                            <div className="nav-section-label">{sec.label}</div>
-                            {visibleItems.filter(n => n.section === sec.key).map(({ path, label, icon: Icon }) => (
-                                <NavLink key={path} to={path} end={path === '/'} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                                    <Icon /> <span>{label}</span>
-                                </NavLink>
-                            ))}
-                        </div>
+                    {menuItems.map(({ path, label, icon: Icon }) => (
+                        <NavLink 
+                            key={path} 
+                            to={path} 
+                            end={path === '/'} 
+                            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                        >
+                            <Icon /> <span>{label}</span>
+                        </NavLink>
                     ))}
                 </nav>
                 <div className="sidebar-footer">

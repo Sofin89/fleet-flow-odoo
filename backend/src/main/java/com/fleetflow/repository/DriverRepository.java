@@ -10,12 +10,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface DriverRepository extends JpaRepository<Driver, Long> {
 
     List<Driver> findByDutyStatus(DutyStatus status);
 
-    @Query("SELECT d FROM Driver d WHERE d.dutyStatus = 'ON_DUTY' AND d.licenseExpiry > :today AND d.licenseCategory = :category")
+    Optional<Driver> findByEmail(String email);
+
+    @Query("SELECT d FROM Driver d WHERE d.dutyStatus = 'ON_DUTY' AND d.licenseExpiry > :today AND (:category IS NULL OR d.licenseCategory = :category)")
     List<Driver> findAvailableDrivers(@Param("today") LocalDate today, @Param("category") LicenseCategory category);
 
     @Query("SELECT d FROM Driver d WHERE " +

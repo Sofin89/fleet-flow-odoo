@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { tripAPI, vehicleAPI, driverAPI } from '../api';
 import { Plus, X, Play, CheckCircle, XCircle, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -7,6 +8,9 @@ import MapLocationPicker from '../components/MapLocationPicker';
 const statusOptions = ['DRAFT', 'DISPATCHED', 'COMPLETED', 'CANCELLED'];
 
 export default function Trips() {
+    const { user } = useAuth();
+    const isAnalyst = user?.role === 'ANALYST';
+    const isDriver = user?.role === 'DRIVER';
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(0);
@@ -180,7 +184,9 @@ export default function Trips() {
                         {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
-                <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> Create Trip</button>
+                {!isAnalyst && !isDriver && (
+                    <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> Create Trip</button>
+                )}
             </div>
 
             <div className="data-table-wrapper">
@@ -197,7 +203,30 @@ export default function Trips() {
                         ) : trips.map(t => (
                             <tr key={t.id}>
                                 <td>#{t.id}</td>
-                                <td><strong>{t.origin}</strong> → {t.destination}</td>
+                                <td>
+                                    <div style={{ marginBottom: 4 }}>
+                                        <strong>{t.originName || t.origin}</strong> → {t.destinationName || t.destination}
+                                    </div>
+                                    <a
+                                        href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(t.origin)}&destination=${encodeURIComponent(t.destination)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            fontSize: '0.7rem',
+                                            color: '#2980b9',
+                                            textDecoration: 'none',
+                                            background: '#e3f2fd',
+                                            padding: '3px 8px',
+                                            borderRadius: 12,
+                                            fontWeight: 600
+                                        }}
+                                        title="Open in Google Maps"
+                                    >
+                                        🗺️ Google Maps
+                                    </a>
+                                </td>
                                 <td>{t.vehicleName}<br /><span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.vehicleLicensePlate}</span></td>
                                 <td>{t.driverName}</td>
                                 <td>
@@ -208,14 +237,14 @@ export default function Trips() {
                                 <td><span className={`status-pill ${t.status.toLowerCase()}`}>{t.status}</span></td>
                                 <td>
                                     <div className="action-buttons">
-                                        {t.status === 'DRAFT' && (
+                                        {t.status === 'DRAFT' && !isAnalyst && !isDriver && (
                                             <>
                                                 <button className="btn btn-primary btn-sm" onClick={() => openEdit(t)} title="Edit"><Edit size={14} /></button>
                                                 <button className="btn btn-success btn-sm" onClick={() => handleDispatch(t.id)} title="Dispatch"><Play size={14} /></button>
                                                 <button className="btn btn-danger btn-sm" onClick={() => handleCancel(t.id)} title="Cancel"><XCircle size={14} /></button>
                                             </>
                                         )}
-                                        {t.status === 'DISPATCHED' && (
+                                        {t.status === 'DISPATCHED' && !isAnalyst && !isDriver && (
                                             <>
                                                 <button className="btn btn-success btn-sm" onClick={() => openComplete(t)} title="Complete"><CheckCircle size={14} /></button>
                                                 <button className="btn btn-danger btn-sm" onClick={() => handleCancel(t.id)} title="Cancel"><XCircle size={14} /></button>
@@ -287,7 +316,7 @@ export default function Trips() {
                                     </div>
                                 </div>
                                 <div style={{ marginBottom: 16 }}>
-                                    <button 
+                                    <button
                                         type="button"
                                         className="btn btn-secondary"
                                         onClick={() => setShowMapPicker(true)}
@@ -347,7 +376,7 @@ export default function Trips() {
 
             {/* Map Location Picker Modal */}
             {showMapPicker && (
-                <MapLocationPicker 
+                <MapLocationPicker
                     onConfirm={handleMapSelection}
                     onCancel={() => setShowMapPicker(false)}
                 />

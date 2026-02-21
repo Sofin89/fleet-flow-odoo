@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { mapAPI } from '../api';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Users, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import webSocketService from '../services/WebSocketService';
 
 // Fix Leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -19,15 +21,22 @@ const driverSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const truckSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
 const combinedSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`;
 
-const makeIcon = (color, svg, size = 32) => L.divIcon({
+const makeIcon = (color, svg, size = 32, isMe = false) => L.divIcon({
     className: '',
     html: `<div style="
         width:${size}px;height:${size}px;border-radius:50%;
-        background:${color};border:3px solid #fff;
+        background:${color};border:${isMe ? '4px' : '3px'} solid #fff;
         box-shadow:0 2px 8px rgba(0,0,0,0.35);
         display:flex;align-items:center;justify-content:center;
         color:#fff;font-weight:700;font-size:12px;
-    ">${svg}</div>`,
+        ${isMe ? 'animation: pulse 2s infinite;' : ''}
+    ">${svg}</div>
+    ${isMe ? `<style>
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            50% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 10px rgba(231, 76, 60, 0); }
+        }
+    </style>` : ''}`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size],
     popupAnchor: [0, -size],
@@ -50,15 +59,23 @@ const warningIcon = L.divIcon({
 const icons = {
     DRIVER_ON: makeIcon('#27ae60', driverSVG),
     DRIVER_OFF: makeIcon('#7f8c8d', driverSVG),
+    ME_MARKER: makeIcon('#e74c3c', driverSVG, 38, true), // Red, larger, with pulse animation
     VEHICLE_TRIP: makeIcon('#2980b9', truckSVG),
     VEHICLE_IDLE: makeIcon('#95a5a6', truckSVG),
     VEHICLE_SHOP: makeIcon('#e67e22', truckSVG),
     COMBINED: makeIcon('#8e44ad', combinedSVG, 38),
+    ME_COMBINED: makeIcon('#8e44ad', combinedSVG, 44, true), // Purple, larger, with pulse animation
     ORIGIN: pinIcon('📍'),
     DEST: pinIcon('🏁'),
 };
 
-function getIcon(marker) {
+function getIcon(marker, currentUserId) {
+    // Check if this is the current user's marker
+    if (marker.driverId === currentUserId) {
+        if (marker.markerType === 'COMBINED') return icons.ME_COMBINED;
+        if (marker.markerType === 'DRIVER') return icons.ME_MARKER;
+    }
+
     if (marker.markerType === 'COMBINED') return icons.COMBINED;
     if (marker.markerType === 'VEHICLE') {
         if (marker.vehicleStatus === 'ON_TRIP') return icons.VEHICLE_TRIP;
@@ -73,6 +90,35 @@ function FlyToMarker({ position }) {
     useEffect(() => {
         if (position) map.flyTo([position.lat, position.lng], 14, { duration: 0.8 });
     }, [position, map]);
+    return null;
+}
+
+// Auto-center on driver's location (Me Marker)
+function AutoCenterOnDriver({ driverId, markers }) {
+    const map = useMap();
+    const [hasManuallyPanned, setHasManuallyPanned] = useState(false);
+    const initialCenterDone = useRef(false);
+
+    // Find the driver's marker
+    const driverMarker = useMemo(() => {
+        return markers.find(m => (m.markerType === 'DRIVER' || m.markerType === 'COMBINED') && m.driverId === driverId);
+    }, [markers, driverId]);
+
+    // Initial center on mount
+    useEffect(() => {
+        if (!initialCenterDone.current && driverMarker && !hasManuallyPanned) {
+            map.setView([driverMarker.latitude, driverMarker.longitude], 14);
+            initialCenterDone.current = true;
+        }
+    }, [driverMarker, map, hasManuallyPanned]);
+
+    // Listen for manual panning
+    useEffect(() => {
+        const handleDragStart = () => setHasManuallyPanned(true);
+        map.on('dragstart', handleDragStart);
+        return () => map.off('dragstart', handleDragStart);
+    }, [map]);
+
     return null;
 }
 
@@ -124,6 +170,8 @@ function closestPointIndex(polyline, lat, lng) {
 // ───────────────────────────────────────────────────────────────────
 
 export default function LiveMap() {
+    const { user } = useAuth();
+    const isAnalyst = user?.role === 'ANALYST';
     const [markers, setMarkers] = useState([]);
     const [selectedKey, setSelectedKey] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -145,8 +193,79 @@ export default function LiveMap() {
     useEffect(() => {
         fetchMarkers();
         const interval = setInterval(fetchMarkers, 5000);
-        return () => clearInterval(interval);
+
+        let locationSub = null;
+
+        // Connect to WebSocket for real-time updates
+        webSocketService.connect(
+            () => {
+                console.log('WebSocket connected for LiveMap');
+
+                // Subscribe to location updates
+                locationSub = webSocketService.subscribe('/topic/locations', (event) => {
+                    handleLocationUpdate(event);
+                });
+            },
+            (error) => {
+                console.error('WebSocket connection error:', error);
+                // Continue with polling fallback
+            }
+        );
+
+        return () => {
+            clearInterval(interval);
+            if (locationSub) {
+                webSocketService.unsubscribe(locationSub);
+            }
+            webSocketService.disconnect();
+        };
     }, []);
+
+    // Handle real-time location updates from WebSocket
+    const handleLocationUpdate = (event) => {
+        if (event.type === 'LOCATION_UPDATE') {
+            // Update the marker in the markers array
+            setMarkers(prevMarkers => {
+                const markerIndex = prevMarkers.findIndex(m =>
+                    m.markerType === 'DRIVER' && m.driverId === event.driverId
+                );
+
+                if (markerIndex >= 0) {
+                    // Update existing marker
+                    const updatedMarkers = [...prevMarkers];
+                    updatedMarkers[markerIndex] = {
+                        ...updatedMarkers[markerIndex],
+                        latitude: event.latitude,
+                        longitude: event.longitude,
+                        accuracy: event.accuracy,
+                        lastUpdated: event.timestamp
+                    };
+                    return updatedMarkers;
+                } else {
+                    // Marker not found - will be picked up by next poll
+                    return prevMarkers;
+                }
+            });
+        } else if (event.type === 'SHARING_STATUS_CHANGE') {
+            // Update sharing status
+            setMarkers(prevMarkers => {
+                const markerIndex = prevMarkers.findIndex(m =>
+                    m.markerType === 'DRIVER' && m.driverId === event.driverId
+                );
+
+                if (markerIndex >= 0) {
+                    const updatedMarkers = [...prevMarkers];
+                    updatedMarkers[markerIndex] = {
+                        ...updatedMarkers[markerIndex],
+                        sharingActive: event.active
+                    };
+                    return updatedMarkers;
+                }
+
+                return prevMarkers;
+            });
+        }
+    };
 
     const markerKey = (m) =>
         m.markerType === 'VEHICLE' ? `v-${m.vehicleId}` :
@@ -172,12 +291,27 @@ export default function LiveMap() {
     const selected = filtered.find(m => markerKey(m) === selectedKey);
     const selectedPos = selected ? { lat: selected.latitude, lng: selected.longitude } : null;
 
-    const center = markers.length > 0
-        ? [
-            markers.reduce((s, m) => s + m.latitude, 0) / markers.length,
-            markers.reduce((s, m) => s + m.longitude, 0) / markers.length,
-        ]
-        : [23.0225, 72.5714];
+    // Determine map center
+    // For drivers, try to center on their location; otherwise use fleet center
+    const center = useMemo(() => {
+        const currentDriverId = user?.driverId || user?.userId;
+        if (user?.role === 'DRIVER' && markers.length > 0 && currentDriverId) {
+            const driverMarker = markers.find(m => (m.markerType === 'DRIVER' || m.markerType === 'COMBINED') && m.driverId === currentDriverId);
+            if (driverMarker) {
+                return [driverMarker.latitude, driverMarker.longitude];
+            }
+        }
+
+        // Default: center on all markers or default location
+        if (markers.length > 0) {
+            return [
+                markers.reduce((s, m) => s + m.latitude, 0) / markers.length,
+                markers.reduce((s, m) => s + m.longitude, 0) / markers.length,
+            ];
+        }
+
+        return [23.0225, 72.5714]; // Default Ahmedabad location
+    }, [markers, user]);
 
     const counts = {
         ALL: markers.length,
@@ -195,7 +329,7 @@ export default function LiveMap() {
                 const fullRoute = m.routePolyline;
                 const driverPos = [m.latitude, m.longitude];
                 const splitIdx = closestPointIndex(fullRoute, m.latitude, m.longitude);
-                
+
                 return {
                     key: markerKey(m),
                     completed: fullRoute.slice(0, splitIdx + 1),
@@ -331,28 +465,33 @@ export default function LiveMap() {
                         />
                         {selectedPos && <FlyToMarker position={selectedPos} />}
 
+                        {/* Auto-center on driver's location if user is a driver */}
+                        {user?.role === 'DRIVER' && (user?.driverId || user?.userId) && (
+                            <AutoCenterOnDriver driverId={user?.driverId || user?.userId} markers={markers} />
+                        )}
+
                         {/* Route polylines with fallback indicators */}
                         {routeLines.map(r => (
                             <span key={`route-${r.key}`}>
                                 <Polyline positions={r.completed}
-                                    pathOptions={{ 
-                                        color: '#27ae60', 
-                                        weight: 5, 
+                                    pathOptions={{
+                                        color: '#27ae60',
+                                        weight: 5,
                                         opacity: r.isFallback ? 0.5 : 0.85,
-                                        dashArray: r.isFallback ? '5, 10' : null 
+                                        dashArray: r.isFallback ? '5, 10' : null
                                     }} />
                                 <Polyline positions={r.remaining}
-                                    pathOptions={{ 
-                                        color: '#8e44ad', 
-                                        weight: 4, 
-                                        opacity: r.isFallback ? 0.4 : 0.6, 
-                                        dashArray: '10, 8' 
+                                    pathOptions={{
+                                        color: '#8e44ad',
+                                        weight: 4,
+                                        opacity: r.isFallback ? 0.4 : 0.6,
+                                        dashArray: '10, 8'
                                     }} />
                                 {r.isFallback && (
                                     <Marker position={r.originPos} icon={warningIcon}>
                                         <Popup>
                                             <div style={{ fontSize: '0.75rem', color: '#e67e22' }}>
-                                                ⚠️ Approximate route (straight-line)<br/>
+                                                ⚠️ Approximate route (straight-line)<br />
                                                 Road routing unavailable
                                             </div>
                                         </Popup>
@@ -375,13 +514,29 @@ export default function LiveMap() {
                         {filtered.map(m => {
                             const route = showRoutes ? routeLines.find(r => r.key === markerKey(m)) : null;
                             const pos = route?.snappedPos || [m.latitude, m.longitude];
+                            const currentDriverId = user?.driverId || user?.userId;
+                            const isMe = (m.markerType === 'DRIVER' || m.markerType === 'COMBINED') && m.driverId === currentDriverId;
 
                             return (
                                 <Marker key={markerKey(m)} position={pos}
-                                    icon={getIcon(m)}
+                                    icon={getIcon(m, currentDriverId)}
                                     eventHandlers={{ click: () => setSelectedKey(markerKey(m)) }}>
                                     <Popup>
                                         <div style={{ fontFamily: 'Inter, sans-serif', minWidth: 200 }}>
+                                            {isMe && (
+                                                <div style={{
+                                                    fontWeight: 700,
+                                                    fontSize: '0.95rem',
+                                                    color: '#e74c3c',
+                                                    marginBottom: 8,
+                                                    padding: '6px 10px',
+                                                    background: '#ffebee',
+                                                    borderRadius: 6,
+                                                    textAlign: 'center'
+                                                }}>
+                                                    📍 You are here
+                                                </div>
+                                            )}
                                             {m.markerType === 'COMBINED' ? (
                                                 <>
                                                     <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#8e44ad', marginBottom: 4 }}>
@@ -442,8 +597,8 @@ export default function LiveMap() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#27ae60', marginBottom: 2 }}>
-                                                        🟢 {m.driverName}
+                                                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isMe ? '#e74c3c' : '#27ae60', marginBottom: 2 }}>
+                                                        {isMe ? '🔴' : '🟢'} {m.driverName}
                                                     </div>
                                                     <div style={{ fontSize: '0.78rem', color: '#6b7280', lineHeight: 1.7 }}>
                                                         <div>License: {m.licenseNumber}</div>
@@ -451,6 +606,25 @@ export default function LiveMap() {
                                                         <div>Status: {m.dutyStatus?.replace('_', ' ')}</div>
                                                         <div>Safety: {m.safetyScore}/100</div>
                                                         {m.speed > 0 && <div style={{ color: '#27ae60', fontWeight: 600 }}>Speed: {m.speed?.toFixed(1)} km/h</div>}
+                                                        {m.accuracy != null && (
+                                                            <div style={{ marginTop: 6, fontSize: '0.75rem' }}>
+                                                                <div style={{ color: '#6b7280' }}>
+                                                                    Accuracy: ±{m.accuracy.toFixed(0)}m
+                                                                </div>
+                                                                {m.accuracy > 100 && (
+                                                                    <div style={{
+                                                                        marginTop: 4,
+                                                                        padding: '4px 8px',
+                                                                        background: '#fff3cd',
+                                                                        borderRadius: 4,
+                                                                        fontSize: '0.7rem',
+                                                                        color: '#856404'
+                                                                    }}>
+                                                                        ⚠️ Low accuracy warning
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </>
                                             )}

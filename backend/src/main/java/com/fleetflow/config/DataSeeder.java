@@ -51,7 +51,7 @@ public class DataSeeder implements CommandLineRunner {
                 .passwordHash(passwordEncoder.encode("password123"))
                 .fullName("Neha Joshi").role(Role.ANALYST).active(true).build());
 
-        userRepository.save(User.builder().email("driver@fleetflow.com")
+        userRepository.save(User.builder().email("vikram@fleetflow.com")
                 .passwordHash(passwordEncoder.encode("password123"))
                 .fullName("Vikram Singh").role(Role.DRIVER).active(true).build());
 

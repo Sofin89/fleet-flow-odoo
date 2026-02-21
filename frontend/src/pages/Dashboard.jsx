@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { dashboardAPI } from '../api';
 import { Truck, AlertTriangle, Activity, Package, Users, CheckCircle, IndianRupee, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import toast from 'react-hot-toast';
+import DriverDashboard from './DriverDashboard';
 
 const kpiConfig = [
     { key: 'totalVehicles', label: 'Total Vehicles', icon: Truck, color: '#2980b9', bg: '#d6eaf8' },
@@ -25,6 +27,14 @@ const formatINR = (val) => {
 };
 
 export default function Dashboard() {
+    const { user } = useAuth();
+
+    // If user is a driver, show driver-specific dashboard
+    if (user?.role === 'DRIVER') {
+        return <DriverDashboard />;
+    }
+
+    // Otherwise show the regular dashboard for managers, dispatchers, etc.
     const [kpis, setKpis] = useState(null);
     const [loading, setLoading] = useState(true);
 

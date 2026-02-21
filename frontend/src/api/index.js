@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = 'http://localhost:8080/api';
 
 const api = axios.create({
     baseURL: API_BASE,
@@ -96,5 +96,8 @@ export const reportAPI = {
 export const mapAPI = {
     getMarkers: () => api.get('/map/markers'),
 };
+
+// Location API (with retry logic and error handling)
+export { locationAPI } from './locationAPI';
 
 export default api;

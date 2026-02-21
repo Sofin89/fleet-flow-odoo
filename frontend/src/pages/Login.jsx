@@ -97,7 +97,7 @@ export default function Login() {
                             ))}
                         </div>
                         <button className="btn btn-primary btn-sm"
-                            onClick={() => quickLogin({ email: 'driver@fleetflow.com' })}
+                            onClick={() => quickLogin({ email: 'vikram@fleetflow.com' })}
                             type="button"
                             style={{ width: '100%', marginTop: 6, padding: '10px 14px' }}>
                             <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>🚛 Driver Login</div>
